@@ -76,7 +76,7 @@ jobs:
           # 报错变成「write error」而不是「版本不对」。
           min_ver="$(plutil -extract LSMinimumSystemVersion raw "$app/Contents/Info.plist")"
           [ "$min_ver" = "26.0" ] \
-            || { echo "::error::LSMinimumSystemVersion 是 $min_ver，应为 26.0"; exit 1; }
+            || { echo "::error::LSMinimumSystemVersion 是 ${min_ver}，应为 26.0"; exit 1; }
           ls -la dist/
 
       - uses: actions/upload-artifact@v4
@@ -94,7 +94,7 @@ jobs:
           size=$(du -sh dist/*.zip | cut -f1)
           archs=$(lipo -archs "$app/Contents/MacOS/mstore-db" | tr ' ' '+')
           cat > /tmp/notes.md <<EOF
-          macOS 客户端 ${{ steps.ver.outputs.version }}（$archs，$size）
+          macOS 客户端 ${{ steps.ver.outputs.version }}（${archs}，${size}）
 
           **需要先装内核。** 这个 App 自己不含存储引擎，所有读写都交给
           [mstore](https://github.com/migoric/mstore) 的 Node sidecar。
