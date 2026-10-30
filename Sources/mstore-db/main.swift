@@ -23,9 +23,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
 
-        // 命令行可以带一个库路径直接打开
-        if let path = CommandLine.arguments.dropFirst().first {
+        // 命令行可以带一个库路径直接打开；再加 --biz 就直接进业务表视图
+        let args = Array(CommandLine.arguments.dropFirst())
+        let wantsBiz = args.contains("--biz")
+        if let path = args.first(where: { !$0.hasPrefix("--") }) {
             model.open(path: path)
+            if wantsBiz { model.pendingBizMode = true }
         }
     }
 

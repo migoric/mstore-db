@@ -31,6 +31,9 @@ final class AppModel: ObservableObject, @unchecked Sendable {
     @Published var bizTookUs: Double = 0
     @Published var bizStatsLine = ""
 
+    /// 命令行带 --biz 时，连上之后直接进业务表视图
+    var pendingBizMode = false
+
     private var sidecar: Sidecar?
     private let work = DispatchQueue(label: "mstore-db.worker", qos: .userInitiated)
 
@@ -61,7 +64,12 @@ final class AppModel: ObservableObject, @unchecked Sendable {
                     self.busy = false
                     self.statusLine = "已连接 pid=\(pid) crc=\(crc)"
                     self.refreshInfo()
-                    self.loadRows()
+                    if self.pendingBizMode {
+                        self.pendingBizMode = false
+                        self.setBizMode(true)
+                    } else {
+                        self.loadRows()
+                    }
                 }
             } catch {
                 self.onMain {

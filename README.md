@@ -13,6 +13,8 @@
 └────────────────────────────┘
 ```
 
+![业务表视图](docs/screenshot-biz.png)
+
 ## 为什么用 stdio 而不是 HTTP
 
 - **生命周期天然绑定**：App 退出，子进程跟着走，不会留孤儿进程占端口。
@@ -43,7 +45,11 @@ MSTORE_CLI=/path/to/mstore/cli.ts \
 .build/debug/mstore-db /path/to/store.db
 ```
 
-不带参数启动时，界面里可以「打开库…」或「新建库…」。
+不带参数启动时，界面里可以「打开库…」或「新建库…」。加 `--biz` 直接进业务表视图：
+
+```bash
+./.build/debug/mstore-db ../mstore/data/demo.db --biz
+```
 
 ## 界面能做什么
 
