@@ -1,46 +1,7 @@
 import AppKit
-import SwiftUI
 
-/// 用 AppKit 起窗口而不是 SwiftUI 的 @main App：
-/// SwiftPM 直接跑的可执行文件没有 .app bundle，AppKit 方式能稳定拿到前台窗口和激活状态。
-final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var window: NSWindow!
-    private let model = AppModel()
-
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        let root = ContentView(model: model)
-        let hosting = NSHostingView(rootView: root)
-        window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1180, height: 700),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = "mstore-db"
-        window.contentView = hosting
-        window.setFrameAutosaveName("mstore-db-main")
-        window.center()
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-
-        // 命令行可以带一个库路径直接打开；再加 --biz 就直接进业务表视图
-        let args = Array(CommandLine.arguments.dropFirst())
-        let wantsBiz = args.contains("--biz")
-        if let path = args.first(where: { !$0.hasPrefix("--") }) {
-            model.open(path: path)
-            if wantsBiz { model.pendingBizMode = true }
-        }
-    }
-
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
-    }
-
-    func applicationWillTerminate(_ notification: Notification) {
-        model.disconnect()
-    }
-}
-
+// 顶层代码只能放在 main.swift 里（Swift 的约定），所以入口留在这里，
+// AppDelegate 与全部视图在各自文件里。
 let app = NSApplication.shared
 app.setActivationPolicy(.regular)
 let delegate = AppDelegate()
