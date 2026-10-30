@@ -77,7 +77,10 @@ final class AppModel: ObservableObject {
                 pendingTableMode = false
                 mode = .table
             } else {
-                await reload()
+                // reload() 是同步的（内部自己开 Task），在这里 await 它会被判定为
+                // 「no 'async' operations occur within 'await' expression」——CI 的零 warning
+                // 门禁会红。这里要的是「打开完成时列表已经就绪」，所以直接等 doReload()。
+                await doReload()
             }
         } catch {
             phase = .failed

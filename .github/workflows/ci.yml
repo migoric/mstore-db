@@ -29,18 +29,25 @@ jobs:
           xcodebuild -version | head -2
 
       # 编译零 warning 是本仓库的硬要求（见 CONTRIBUTING.md）。
-      # 单独跑一次全量构建并把输出抓下来，才有干净的输出可判。
+      # 只匹配「文件:行:列: warning:」，不匹配编译输出里偶尔出现的其它字样。
+      # 注意：本地增量构建会跳过未改动的文件，warning 可能只在新克隆/新 runner 上出现——
+      # 验证「零 warning」必须用干净构建（swift build --scratch-path /tmp/x），
+      # 否则会像 2026-10-31 那次一样，本地绿、CI 红。
       - name: build (debug, 零 warning)
         run: |
           set -o pipefail
           swift build 2>&1 | tee /tmp/build.log
-          if grep -E "warning:|error:" /tmp/build.log; then
+          if grep -E '\.swift:[0-9]+:[0-9]+: (warning|error):' /tmp/build.log; then
             echo "::error::构建出现 warning/error，见上方输出"
             exit 1
           fi
 
+      # 这里必须带 pipefail：原来写 `swift build -c release 2>&1 | tail -5`，
+      # 管道末尾是 tail，release 构建失败也会返回 0，等于这条门禁从来没有生效。
       - name: build (release)
-        run: swift build -c release 2>&1 | tail -5
+        run: |
+          set -o pipefail
+          swift build -c release 2>&1 | tail -5
 
       - name: 平台约束没被放宽
         run: |
