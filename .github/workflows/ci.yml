@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # 必须是 macOS 26 镜像：Package.swift 声明 platforms: [.macOS("26.0")]，
+    # 低版本 SDK 连 Liquid Glass 的符号都不认识，编译直接失败。
+    # 若该镜像还没在当前组织开放，这个 job 会一直排队——此时改用自签 runner。
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: toolchain
+        run: |
+          sw_vers
+          swift --version
+          xcodebuild -version | head -2
+
+      # 编译零 warning 是本仓库的硬要求（见 CONTRIBUTING.md）。
+      # 单独跑一次全量构建并把输出抓下来，才有干净的输出可判。
+      - name: build (debug, 零 warning)
+        run: |
+          set -o pipefail
+          swift build 2>&1 | tee /tmp/build.log
+          if grep -E "warning:|error:" /tmp/build.log; then
+            echo "::error::构建出现 warning/error，见上方输出"
+            exit 1
+          fi
+
+      - name: build (release)
+        run: swift build -c release 2>&1 | tail -5
+
+      - name: 平台约束没被放宽
+        run: |
+          grep -q 'swift-tools-version: 6.2' Package.swift \
+            || { echo "::error::swift-tools-version 已不是 6.2"; exit 1; }
+          grep -q "platforms: \[.macOS(\"26.0\")\]" Package.swift \
+            || { echo "::error::Package.swift 的 platforms 已不是 macOS 26"; exit 1; }
+          test -x .build/debug/mstore-db
+          echo "ok: $(du -h .build/debug/mstore-db | cut -f1)"
+
+  # 客户端与内核之间只有协议。CI 起不了窗口，但可以证明
+  # 「内核能起来 + 握手 + 位图查询 + biz.get」这套帧的形状没变。
+  protocol:
+    runs-on: macos-26
+    steps:
+      - name: checkout mstore-db
+        uses: actions/checkout@v4
+        with:
+          path: mstore-db
+      - name: checkout mstore
+        uses: actions/checkout@v4
+        with:
+          repository: migoric/mstore
+          path: mstore
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.18'
+
+      - name: 造演示库
+        working-directory: mstore
+        run: node bench/demo.ts --out /tmp/demo.db --biz 3000 --cap 200 --runs 4
+
+      - name: 协议契约
+        working-directory: mstore-db
+        run: node tools/protocol-check.mjs ../mstore/cli.ts /tmp/demo.db

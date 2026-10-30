@@ -1,0 +1,59 @@
+---
+name: Feature request
+description: 新能力、视觉改进、交互调整
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        这个客户端的目标是**把内核的能力如实呈现**，而不是发明内核做不到的交互。
+        查询只有五个操作符，就是因为内核的 `Filter` 只有四个自由度。
+        提议被接受的常见形态是「把内核已有的能力露出来」，而不是「在界面层再算一遍」。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 你遇到的实际问题
+      description: 不要先讲方案。讲清楚现在哪件事做不了、麻烦在哪
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 你设想的做法
+    validations:
+      required: true
+
+  - type: input
+    id: kernel
+    attributes:
+      label: 需要内核先加的能力（如果有）
+      description: 写清是哪个 op、哪个字段。没有就留空
+      placeholder: 需要在 biz.query 的 filter 里支持 not-equal
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 涉及范围
+      multiple: true
+      options:
+        - 侧栏 / 导航
+        - 列表（虚拟化、列、排序）
+        - 查询构建器
+        - 详情 / JSON 展示
+        - 视觉（玻璃、动画、深色）
+        - 命令行参数
+        - 测试与工具
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: 请确认
+      options:
+        - label: 这个功能只做 macOS 26，不需要为低版本准备降级
+          required: true
+        - label: 我理解界面改动需要附浅色与深色两张截图
+          required: true

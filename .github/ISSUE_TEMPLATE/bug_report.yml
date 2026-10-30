@@ -1,0 +1,88 @@
+---
+name: Bug report
+description: 界面异常、连不上库、数据与内核不一致
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        「连不上库」先看侧栏底部状态面板：它会显示这次走的哪条路、以及失败原因
+        （`no snapshot` / `stale` / `CRC mismatch` / 段丢失）。
+
+        **请不要粘贴真实业务数据。** 样本库用 `mstore` 的 `bench/demo.ts` 造。
+
+  - type: input
+    id: platform
+    attributes:
+      label: macOS / Swift / Xcode
+      description: 必须说明是 macOS 26（本项目不兼容低版本）
+      placeholder: macOS 26.0 / Swift 6.2 / Xcode 26.0
+    validations:
+      required: true
+
+  - type: input
+    id: commit
+    attributes:
+      label: mstore-db commit
+      placeholder: 0dc0c0f
+    validations:
+      required: true
+
+  - type: input
+    id: kernel
+    attributes:
+      label: mstore 内核 commit + node 版本
+      description: 客户端与内核是两个仓库，两边版本都要
+      placeholder: mstore 0b5e62b / node v22.22.2
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤
+      description: 用的是哪条启动命令、点了哪里
+      render: bash
+      placeholder: |
+        .build/debug/mstore-db ../mstore/data/demo.db --table --filter 'dept=R&D;level>=5'
+        然后点侧栏「capture」
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 截图最好；控制台输出（「更多 → 自检」的结果）也贴一下
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 涉及哪一块
+      multiple: true
+      options:
+        - 不确定
+        - 连不上 / sidecar 起不来（Sidecar.swift）
+        - 协议 / 数据不对（StoreClient.swift、Payloads.swift）
+        - 状态机 / 选中 / 刷新（AppModel.swift）
+        - 查询构建器（QueryBar.swift、QueryState.swift）
+        - 视觉 / 玻璃 / 布局（Theme.swift、各 View）
+        - 命令行参数
+        - 深色模式
+
+  - type: checkboxes
+    id: darkMode
+    attributes:
+      label: 视觉问题的话
+      options:
+        - label: 我确认也看了深色模式（`--dark`），问题在两种外观下的表现都写了
+          required: false

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全漏洞
+    url: https://github.com/migoric/mstore-db/security/advisories/new
+    about: 请不要开公开 issue，用私密漏洞报告
+  - name: 内核的问题
+    url: https://github.com/migoric/mstore/issues
+    about: 数据不对、写入失败、崩溃在现场——大概率在内核，不在界面
+  - name: 玻璃态与布局的实测结论
+    url: https://github.com/migoric/mstore-db/blob/main/AGENTS.md
+    about: 改界面之前先看这里，一半的坑已经踩过
