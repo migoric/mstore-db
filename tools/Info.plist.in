@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>mstore-db</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.migoric.mstore-db</string>
+    <key>CFBundleName</key>
+    <string>mstore-db</string>
+    <key>CFBundleDisplayName</key>
+    <string>mstore</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>CFBundleShortVersionString</key>
+    <string>__VERSION__</string>
+    <key>CFBundleVersion</key>
+    <string>__BUILD__</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <!-- Liquid Glass 的 API 在 26 以下不存在，Package.swift 里也是 .macOS("26.0")。
+         这里写死是为了让 LaunchServices 在低版本上明确拒绝，而不是启动后崩在渲染里。 -->
+    <key>LSMinimumSystemVersion</key>
+    <string>26.0</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.developer-tools</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>MIT Licensed</string>
+</dict>
+</plist>

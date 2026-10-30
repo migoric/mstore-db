@@ -30,6 +30,16 @@ final class Sidecar: @unchecked Sendable {
         if let cli = env["MSTORE_CLI"] { candidates.append(cli) }
         candidates.append(FileManager.default.currentDirectoryPath + "/../mstore/cli.ts")
         candidates.append(FileManager.default.currentDirectoryPath + "/mstore/cli.ts")
+        // 从 Finder 启动 .app 时 cwd 是 "/"，上面两条必然落空。补两条相对 bundle 的：
+        // ① .app 同级放一份 mstore/（发布包推荐的用法）；② 打进 Contents/Resources 的内核。
+        let bundleURL = Bundle.main.bundleURL
+        if bundleURL.pathExtension == "app" {
+            let outer = bundleURL.deletingLastPathComponent()
+            candidates.append(outer.appendingPathComponent("mstore/cli.ts").path)
+            candidates.append(
+                bundleURL.appendingPathComponent("Contents/Resources/mstore/cli.ts").path
+            )
+        }
         candidates.append(NSHomeDirectory() + "/Documents/projects/mstore/cli.ts")
         for c in candidates where FileManager.default.fileExists(atPath: c) {
             return (node, c)

@@ -48,6 +48,25 @@
 - 未连接时露出「capture 0 条」的空骨架，分不清「空库」还是「没打开」 → 三栏
   `.opacity(phase == .ready ? 1 : 0)`，未连接只显示连接卡。
 - 详情栏默认空白 → 加载后自动选中首行。
+- `QueryState.parse` 不 trim 字段名：`--filter 'dept = R&D'` 会解析出字段 `"dept "`，
+  内核按字段查索引查不到，**静默返回 0 行**。现在字段名与值两端都 trim。
+- 从 Finder 启动 `.app` 时 cwd 是 `/`，`../mstore/cli.ts` 等候选路径必然全部落空 →
+  `Sidecar.locateRuntime` 补两条相对 bundle 的路径：`.app` 同级 `mstore/`、
+  以及包内 `Contents/Resources/mstore/`。
+
+### Build & CI
+- **Swift 单测**（`swift-testing`）：`Tests/mstore-dbTests/` 19 个用例，覆盖命令行条件解析、
+  合法性、`Filter` 转换、描述串。此前 Swift 侧一条测试都没有，零 warning 是唯一门禁——
+  它只能证明「编译过」，证明不了「条件被正确翻译成 Filter」。
+- `tools/bundle.sh`：组 `.app`（`Info.plist` 模板 + 图标）→ ad-hoc 签名 → universal zip +
+  sha256。默认同时出 arm64 与 x86_64——CI runner 只有一种架构，而用户两种都有。
+- `tools/make-icon.py`：生成 `AppIcon.icns`（10 档尺寸），改配色只改常量。
+- `.github/workflows/release.yml`：`v*` tag 触发，跑测试 → 打包 → 自检架构/签名/最低系统版本
+  → 发 GitHub Release。手动触发只产 artifact 不发 release。
+- CI 新增 `test` job（测试代码同样零 warning）和「打包冒烟」步骤，
+  保证发布路径上唯一没人手工走过的地方每次都被走一遍。
+- 所有 `swift` 命令统一带 `--disable-sandbox`：SwiftPM 编译 manifest 时自己套的
+  `sandbox-exec` 在受限 shell 里会失败，报的却是「Invalid manifest」。
 
 ### Notes
 - `swift-tools-version: 6.2`，`platforms: [.macOS("26.0")]`。低版本不兼容，

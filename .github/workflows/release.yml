@@ -1,0 +1,139 @@
+name: Release
+
+# v0.1.0 → 打包 .app + zip，直接挂到 GitHub Release 上。
+# 手动触发（workflow_dispatch）只产 artifact、不发 release，用来验证打包链路。
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '仅用于手动构建的版本号（不会产生 tag/release）'
+        required: false
+        default: '0.0.0-dev'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  SWIFT_FLAGS: --disable-sandbox
+
+jobs:
+  package:
+    runs-on: macos-26
+    steps:
+      # fetch-depth: 0 —— bundle.sh 要用 git describe 取版本、git rev-list 取 build 号，
+      # 浅克隆下两者都会退化成「0.1.0-dev.local / build 1」。这和 mstore 的变异门禁
+      # 那个坑同源：浅克隆让依赖 git 历史的步骤安静地算错，而不是报错。
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 版本
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            v="${{ github.event.inputs.version }}"
+          else
+            v="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "发布版本：$v"
+
+      # 发布前必须过测试。打包成功但查询翻译错了，用户拿到的是一个「能开、查错数据」的 App。
+      - name: swift test
+        run: |
+          set -o pipefail
+          swift test $SWIFT_FLAGS 2>&1 | tail -8
+
+      - name: 打包（universal）
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: ./tools/bundle.sh
+
+      - name: 产物自检
+        run: |
+          set -euo pipefail
+          app=dist/mstore-db.app
+          # 架构必须是两条：CI runner 只有一种架构，而用户两种都有。
+          archs="$(lipo -archs "$app/Contents/MacOS/mstore-db")"
+          echo "archs: $archs"
+          case "$archs" in
+            *arm64*) ;; *) echo "::error::缺少 arm64 切片"; exit 1;;
+          esac
+          case "$archs" in
+            *x86_64*) ;; *) echo "::error::缺少 x86_64 切片"; exit 1;;
+          esac
+          codesign --verify --strict "$app"
+          test -f "$app/Contents/Resources/AppIcon.icns"
+          plutil -lint "$app/Contents/Info.plist"
+          # 最低系统版本写错会让低版本用户装了才崩，这里对齐 Package.swift 的 26.0
+          plutil -extract LSMinimumSystemVersion raw "$app/Contents/Info.plist" \
+            | grep -qx '26.0'
+          ls -la dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mstore-db-${{ steps.ver.outputs.version }}
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: 生成 release notes
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          app=dist/mstore-db.app
+          size=$(du -sh dist/*.zip | cut -f1)
+          archs=$(lipo -archs "$app/Contents/MacOS/mstore-db" | tr ' ' '+')
+          cat > /tmp/notes.md <<EOF
+          macOS 客户端 ${{ steps.ver.outputs.version }}（$archs，$size）
+
+          **需要先装内核。** 这个 App 自己不含存储引擎，所有读写都交给
+          [mstore](https://github.com/migoric/mstore) 的 Node sidecar。
+          解压后把 \`mstore\` 仓库放在 \`mstore-db.app\` 同一目录下：
+
+          \`\`\`
+          下载目录/
+          ├── mstore-db.app
+          └── mstore/          # git clone https://github.com/migoric/mstore
+          \`\`\`
+
+          或者用环境变量指定：\`MSTORE_CLI=/path/to/mstore/cli.ts\`、\`MSTORE_NODE=$(which node)\`。
+
+          ## 安装
+
+          1. 解压 \`mstore-db-*.zip\`
+          2. 把 \`mstore-db.app\` 拖进「应用程序」
+          3. **首次打开要右键 →「打开」**：包是 ad-hoc 签名（无开发者账号），
+             Gatekeeper 会对双击直接拦截。这一步只需做一次。
+          4. 运行时要求 macOS 26+（界面建立在 Liquid Glass 上）、Node ≥ 22.18
+
+          ## 校验
+
+          \`\`\`
+          $(cat dist/*.sha256)
+          \`\`\`
+          EOF
+          cat /tmp/notes.md
+
+      - name: 发 Release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/*.zip dist/*.sha256 --clobber
+            gh release edit "$tag" --notes-file /tmp/notes.md
+          else
+            gh release create "$tag" \
+              --title "mstore-db ${{ steps.ver.outputs.version }}" \
+              --notes-file /tmp/notes.md \
+              dist/*.zip dist/*.sha256
+          fi

@@ -2,3 +2,6 @@
 .swiftpm/
 *.xcodeproj
 .DS_Store
+
+# bundle.sh 的产物：.app 与 zip 都不进版本库
+dist/

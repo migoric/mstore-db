@@ -108,29 +108,35 @@ struct QueryState: Sendable {
     /// 存在的理由不是炫技：没有它就没法在无人操作的情况下验证查询链路，
     /// 而「UI 能点」和「查询真的走位图」是两件事，后者必须能被脚本证明。
     static func parse(_ spec: String) -> [QueryCondition] {
+        // 字段名必须 trim：`--filter 'dept = R&D'` 里那个空格若留在字段名上，
+        // 内核按 field 查索引就是查不到——不报错，安静地返回 0 行。
+        // 这类「输入多了个空格 → 结果为空」的故障最难查，所以在解析这一层就抹平。
         spec.split(separator: ";").compactMap { piece -> QueryCondition? in
             let text = piece.trimmingCharacters(in: .whitespaces)
+            func field(_ s: Substring) -> String {
+                s.trimmingCharacters(in: .whitespaces)
+            }
             if let r = text.range(of: ">=") {
                 return QueryCondition(
-                    field: String(text[text.startIndex..<r.lowerBound]),
+                    field: field(text[text.startIndex..<r.lowerBound]),
                     op: .atLeast,
-                    value: String(text[r.upperBound...])
+                    value: field(text[r.upperBound...])
                 )
             }
             if let r = text.range(of: "<=") {
                 return QueryCondition(
-                    field: String(text[text.startIndex..<r.lowerBound]),
+                    field: field(text[text.startIndex..<r.lowerBound]),
                     op: .atMost,
-                    value: String(text[r.upperBound...])
+                    value: field(text[r.upperBound...])
                 )
             }
             guard let i = text.firstIndex(of: "=") else { return nil }
-            let field = String(text[text.startIndex..<i])
-            let raw = String(text[text.index(after: i)...])
+            let key = field(text[text.startIndex..<i])
+            let raw = field(text[text.index(after: i)...])
             if raw.contains(",") {
-                return QueryCondition(field: field, op: .anyOf, value: raw)
+                return QueryCondition(field: key, op: .anyOf, value: raw)
             }
-            return QueryCondition(field: field, op: .equals, value: raw)
+            return QueryCondition(field: key, op: .equals, value: raw)
         }
     }
 }

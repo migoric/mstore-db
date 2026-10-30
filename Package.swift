@@ -14,6 +14,11 @@ let package = Package(
         .executableTarget(
             name: "mstore-db",
             path: "Sources/mstore-db"
+        ),
+        .testTarget(
+            name: "mstore-dbTests",
+            dependencies: ["mstore-db"],
+            path: "Tests/mstore-dbTests"
         )
     ]
 )
