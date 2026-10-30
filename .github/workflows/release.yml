@@ -106,7 +106,7 @@ jobs:
           └── mstore/          # git clone https://github.com/migoric/mstore
           \`\`\`
 
-          或者用环境变量指定：\`MSTORE_CLI=/path/to/mstore/cli.ts\`、\`MSTORE_NODE=$(which node)\`。
+          或者用环境变量指定：\`MSTORE_CLI=/path/to/mstore/cli.ts\`、\`MSTORE_NODE=/path/to/node\`。
 
           ## 安装
 

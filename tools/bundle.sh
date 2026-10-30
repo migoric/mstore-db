@@ -69,9 +69,13 @@ echo "==> codesign (ad-hoc)"
 codesign --force --sign - --identifier "$BUNDLE_ID" "$APP"
 codesign --verify --strict "$APP"
 
-ZIP="$DIST/$APP_NAME-$VERSION-macos.zip"
+ZIP_NAME="$APP_NAME-$VERSION-macos.zip"
+ZIP="$DIST/$ZIP_NAME"
 ditto -c -k --keepParent "$APP" "$ZIP"
-shasum -a 256 "$ZIP" | tee "$ZIP.sha256"
+# 摘要里不带 dist/ 前缀：用户把 zip 和 .sha256 放同一目录时，
+# `shasum -a 256 -c xxx.zip.sha256` 才能直接过。写成 dist/xxx.zip 那一行永远找不到文件。
+( cd "$DIST" && shasum -a 256 "$ZIP_NAME" > "$ZIP_NAME.sha256" )
+cat "$ZIP.sha256"
 
 echo
 echo "产物："
