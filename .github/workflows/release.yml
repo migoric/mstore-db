@@ -71,9 +71,12 @@ jobs:
           codesign --verify --strict "$app"
           test -f "$app/Contents/Resources/AppIcon.icns"
           plutil -lint "$app/Contents/Info.plist"
-          # 最低系统版本写错会让低版本用户装了才崩，这里对齐 Package.swift 的 26.0
-          plutil -extract LSMinimumSystemVersion raw "$app/Contents/Info.plist" \
-            | grep -qx '26.0'
+          # 最低系统版本写错会让低版本用户装了才崩，这里对齐 Package.swift 的 26.0。
+          # 不用 `plutil ... | grep -qx`：pipefail 下 grep -q 提前退出会给上游 EPIPE，
+          # 报错变成「write error」而不是「版本不对」。
+          min_ver="$(plutil -extract LSMinimumSystemVersion raw "$app/Contents/Info.plist")"
+          [ "$min_ver" = "26.0" ] \
+            || { echo "::error::LSMinimumSystemVersion 是 $min_ver，应为 26.0"; exit 1; }
           ls -la dist/
 
       - uses: actions/upload-artifact@v4
