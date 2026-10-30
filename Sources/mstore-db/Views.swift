@@ -44,29 +44,96 @@ struct ContentView: View {
     // MARK: - 顶部工具条
 
     private var toolbar: some View {
-        HStack(spacing: 10) {
-            Button("打开库…") { openPanel() }
-            Button("新建库…") { savePanel() }
-            Divider().frame(height: 18)
-            Picker("", selection: Binding(
-                get: { model.namespace },
-                set: { model.switchNamespace($0) }
-            )) {
-                ForEach(AppModel.namespaces, id: \.self) { Text($0).tag($0) }
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                Button("打开库…") { openPanel() }
+                Button("新建库…") { savePanel() }
+                Divider().frame(height: 18)
+                Picker("", selection: Binding(
+                    get: { model.bizMode },
+                    set: { model.setBizMode($0) }
+                )) {
+                    Text("记录").tag(false)
+                    Text("业务表").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 140)
+                if model.bizMode {
+                    Picker("", selection: Binding(
+                        get: { model.filterDept },
+                        set: { model.filterDept = $0; model.loadBiz() }
+                    )) {
+                        Text("全部部门").tag("")
+                        ForEach(AppModel.depts, id: \.self) { Text($0).tag($0) }
+                    }
+                    .frame(width: 130)
+                    Picker("", selection: Binding(
+                        get: { model.filterStatus },
+                        set: { model.filterStatus = $0; model.loadBiz() }
+                    )) {
+                        Text("全部状态").tag("")
+                        ForEach(AppModel.statuses, id: \.self) { Text($0).tag($0) }
+                    }
+                    .frame(width: 120)
+                    Stepper(
+                        "level ≥ \(model.filterLevelMin)",
+                        value: Binding(
+                            get: { model.filterLevelMin },
+                            set: { model.filterLevelMin = min($0, model.filterLevelMax); model.loadBiz() }
+                        ),
+                        in: 0...8
+                    )
+                    .frame(width: 130)
+                    Stepper(
+                        "≤ \(model.filterLevelMax)",
+                        value: Binding(
+                            get: { model.filterLevelMax },
+                            set: { model.filterLevelMax = max($0, model.filterLevelMin); model.loadBiz() }
+                        ),
+                        in: 0...8
+                    )
+                    .frame(width: 100)
+                } else {
+                    Picker("", selection: Binding(
+                        get: { model.namespace },
+                        set: { model.switchNamespace($0) }
+                    )) {
+                        ForEach(AppModel.namespaces, id: \.self) { Text($0).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 320)
+                }
+                Button("刷新") {
+                    if model.bizMode {
+                        model.loadBiz()
+                        model.refreshBizStats()
+                    } else {
+                        model.loadRows()
+                    }
+                    model.refreshInfo()
+                }
+                Spacer()
+                if model.busy { ProgressView().controlSize(.small) }
             }
-            .pickerStyle(.segmented)
-            .frame(width: 320)
-            Button("刷新") { model.loadRows(); model.refreshInfo() }
-            Divider().frame(height: 18)
-            Button("造测试数据") { model.generateData() }.disabled(!model.connected || model.busy)
-            Button("跑压测") { model.runBench() }.disabled(!model.connected || model.busy)
-            Button("自检") { model.check() }.disabled(!model.connected || model.busy)
-            Button("清空本 ns") { model.clearNamespace() }.disabled(!model.connected || model.busy)
-            if !model.log.isEmpty {
-                Button("查看输出") { showLog = true }
+            HStack(spacing: 10) {
+                Button("造演示数据") { model.generateData() }.disabled(!model.connected || model.busy)
+                Button("跑压测") { model.runBench() }.disabled(!model.connected || model.busy)
+                Button("自检") { model.check() }.disabled(!model.connected || model.busy)
+                if model.bizMode {
+                    Button("清空业务表") { model.clearBiz() }.disabled(!model.connected || model.busy)
+                } else {
+                    Button("清空本 ns") { model.clearNamespace() }.disabled(!model.connected || model.busy)
+                }
+                if !model.log.isEmpty {
+                    Button("查看输出") { showLog = true }
+                }
+                Spacer()
+                if model.bizMode {
+                    Text(model.bizStatsLine)
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
             }
-            Spacer()
-            if model.busy { ProgressView().controlSize(.small) }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 9)
@@ -98,8 +165,9 @@ struct ContentView: View {
     private var listPane: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(model.namespace).font(.headline)
-                Text("\(model.rows.count) 条").font(.caption).foregroundStyle(.secondary)
+                Text(model.bizMode ? "业务表" : model.namespace).font(.headline)
+                Text(model.bizMode ? "\(model.bizMatched) 命中 · \(model.rows.count) 显示" : "\(model.rows.count) 条")
+                    .font(.caption).foregroundStyle(.secondary)
                 Spacer()
             }
             .padding(.horizontal, 14).padding(.top, 12)
@@ -120,7 +188,9 @@ struct ContentView: View {
                     }
                     .padding(.vertical, 2)
                     .contentShape(Rectangle())
-                    .onTapGesture { model.select(row) }
+                    .onTapGesture {
+                        if model.bizMode { model.selectBiz(row) } else { model.select(row) }
+                    }
                     .listRowBackground(
                         model.selection?.key == row.key
                             ? Color.accentColor.opacity(0.16) : Color.clear
@@ -138,8 +208,10 @@ struct ContentView: View {
             HStack {
                 Text(model.selection?.key ?? "未选中").font(.headline)
                 Spacer()
-                Button("读 body 前 4KB") { model.peekBody() }
-                    .disabled(model.selection == nil)
+                if !model.bizMode {
+                    Button("读 body 前 4KB") { model.peekBody() }
+                        .disabled(model.selection == nil)
+                }
             }
             .padding(.horizontal, 14).padding(.top, 12)
             ScrollView {
