@@ -105,15 +105,15 @@ actor StoreClient {
         return text
     }
 
-    /// body 前 4KB 原样读出
+    /// body 前 4KB 原样读出；sidecar 只读并返回这一段，不搬完整对象
     func bodyPeek(ns: Namespace, key: String) async -> String {
-        guard let r = (await call(["op": "body", "ns": ns.rawValue, "key": key]))?["result"] as? [String: Any],
+        guard let r = (await call(["op": "body.range", "ns": ns.rawValue, "key": key, "off": 0, "len": 4096]))?["result"] as? [String: Any],
               let b64 = r["base64"] as? String,
               let data = Data(base64Encoded: b64)
         else { return "（这条记录没有 body）" }
-        let head = data.prefix(4096)
-        let text = String(data: head, encoding: .utf8) ?? "<二进制 \(data.count) 字节>"
-        return "// body 共 \(Self.bytes(data.count))，以下是前 \(head.count) 字节（未 parse）\n\n" + text
+        let total = r["total"] as? Int ?? data.count
+        let text = String(data: data, encoding: .utf8) ?? "<二进制 \(data.count) 字节>"
+        return "// body 共 \(Self.bytes(total))，以下是前 \(data.count) 字节（未 parse）\n\n" + text
     }
 
     // MARK: - 业务表

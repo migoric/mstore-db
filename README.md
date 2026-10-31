@@ -128,7 +128,7 @@ swift test --disable-sandbox
 ```text
 hello                              启动时主动推 {pid, crc, stats}
 info / check                       库统计 / 自检
-list / get / body                  记录、值、body（前 4KB，base64）
+list / get / body.range            记录、值、body 范围（前 4KB，base64）
 put / putbody / clear              KV 写入与按 ns 清空
 biz.info / biz.query               页表与位图统计 / 位图查询
 biz.get / biz.put / biz.del / biz.clear
@@ -156,7 +156,7 @@ backup / quit
 - **只读**：界面不做写入编辑。写路径在 sidecar 里已实现（`biz.put` / `biz.del` 等），只是没接编辑控件
 - **列表不虚拟化**：几千行会卡，上限由查询 `limit` 挡住（默认 300）
 - **JSON 高亮有 200KB 上限**：超过就不着色，避免大 body 卡住主线程
-- **body 用 base64 过通道**：演示够用。真传 5MB 对象应只传 `{off, len}` 让 Swift 自己读盘
+- **body 预览用 base64 过通道**：范围读固定只传前 4KB；完整大 body 导出仍应只传 `{off, len}` 让 Swift 自己读盘
 - **一次只连一个库**：换库要先关掉当前的 sidecar
 - **无沙盒 / 无公证**：ad-hoc 签名的包，首次打开需右键
 
